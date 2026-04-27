@@ -1,0 +1,6 @@
+@FinTrack.API_HostAddress = http://localhost:5050
+
+GET {{FinTrack.API_HostAddress}}/api/transactions
+Accept: application/json
+
+###
