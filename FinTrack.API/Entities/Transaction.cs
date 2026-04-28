@@ -3,6 +3,18 @@ namespace FinTrack.API.Entities;
 public class Transaction
 {
     public int Id { get; set; }
+    // Bu transaction hangi kullanıcıya ait?
+public int UserId { get; set; }
+
+// Bu transaction hangi kategoriye ait?
+public int? CategoryId { get; set; }
+
+// Navigation property
+public Category? Category { get; set; }
+
+// Navigation property
+// EF Core ilişki kurmak için kullanır
+public User? User { get; set; }
 
     public string Title { get; set; } = string.Empty;
 

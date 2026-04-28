@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using FinTrack.API.DTOs;
 using FinTrack.API.Entities;
 using FinTrack.API.Interfaces;
@@ -7,7 +8,6 @@ namespace FinTrack.API.Services;
 
 public class TransactionService : ITransactionService
 {
-    // DbContext inject ediyoruz
     private readonly AppDbContext _context;
 
     public TransactionService(AppDbContext context)
@@ -15,22 +15,37 @@ public class TransactionService : ITransactionService
         _context = context;
     }
 
-    public IEnumerable<TransactionDto> GetAll()
+    public async Task<IEnumerable<TransactionDto>> GetAllAsync(int userId)
     {
-        return _context.Transactions.Select(t => new TransactionDto
-        {
-            Id = t.Id,
-            Title = t.Title,
-            Amount = t.Amount,
-            Type = t.Type,
-            TransactionDate = t.TransactionDate,
-            Note = t.Note,
-            CreatedAt = t.CreatedAt
-        });
+        return await _context.Transactions
+            .Where(t => t.UserId == userId)
+            .Select(t => new TransactionDto
+            {
+                Id = t.Id,
+                CategoryId = t.CategoryId,
+                CategoryName = t.Category != null ? t.Category.Name : null,
+                Title = t.Title,
+                Amount = t.Amount,
+                Type = t.Type,
+                TransactionDate = t.TransactionDate,
+                Note = t.Note,
+                CreatedAt = t.CreatedAt
+            })
+            .ToListAsync();
     }
 
-    public TransactionDto Create(CreateTransactionDto dto)
+    public async Task<TransactionDto> CreateAsync(CreateTransactionDto dto, int userId)
     {
+
+        if (dto.CategoryId != null)
+{
+    var categoryExists = await _context.Categories
+        .AnyAsync(c => c.Id == dto.CategoryId && c.UserId == userId);
+
+    if (!categoryExists)
+        throw new Exception("Geçersiz kategori");
+}
+
         var transaction = new Transaction
         {
             Title = dto.Title,
@@ -38,15 +53,24 @@ public class TransactionService : ITransactionService
             Type = dto.Type,
             TransactionDate = dto.TransactionDate,
             Note = dto.Note,
+            CategoryId = dto.CategoryId,
+            UserId = userId,
             CreatedAt = DateTime.UtcNow
         };
 
-        _context.Transactions.Add(transaction);
-        _context.SaveChanges();
+        await _context.Transactions.AddAsync(transaction);
+        await _context.SaveChangesAsync();
+
+        var categoryName = await _context.Categories
+            .Where(c => c.Id == transaction.CategoryId && c.UserId == userId)
+            .Select(c => c.Name)
+            .FirstOrDefaultAsync();
 
         return new TransactionDto
         {
             Id = transaction.Id,
+            CategoryId = transaction.CategoryId,
+            CategoryName = categoryName,
             Title = transaction.Title,
             Amount = transaction.Amount,
             Type = transaction.Type,
@@ -56,22 +80,20 @@ public class TransactionService : ITransactionService
         };
     }
 
-    public bool Delete(int id)
+    public async Task<TransactionDto?> UpdateAsync(int id, CreateTransactionDto dto, int userId)
     {
-        var transaction = _context.Transactions.FirstOrDefault(t => t.Id == id);
 
-        if (transaction == null)
-            return false;
+        if (dto.CategoryId != null)
+{
+    var categoryExists = await _context.Categories
+        .AnyAsync(c => c.Id == dto.CategoryId && c.UserId == userId);
 
-        _context.Transactions.Remove(transaction);
-        _context.SaveChanges();
+    if (!categoryExists)
+        throw new Exception("Geçersiz kategori");
+}
 
-        return true;
-    }
-
-    public TransactionDto? Update(int id, CreateTransactionDto dto)
-    {
-        var transaction = _context.Transactions.FirstOrDefault(t => t.Id == id);
+        var transaction = await _context.Transactions
+            .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
 
         if (transaction == null)
             return null;
@@ -81,13 +103,21 @@ public class TransactionService : ITransactionService
         transaction.Type = dto.Type;
         transaction.TransactionDate = dto.TransactionDate;
         transaction.Note = dto.Note;
+        transaction.CategoryId = dto.CategoryId;
         transaction.UpdatedAt = DateTime.UtcNow;
 
-        _context.SaveChanges();
+        await _context.SaveChangesAsync();
+
+        var categoryName = await _context.Categories
+            .Where(c => c.Id == transaction.CategoryId && c.UserId == userId)
+            .Select(c => c.Name)
+            .FirstOrDefaultAsync();
 
         return new TransactionDto
         {
             Id = transaction.Id,
+            CategoryId = transaction.CategoryId,
+            CategoryName = categoryName,
             Title = transaction.Title,
             Amount = transaction.Amount,
             Type = transaction.Type,
@@ -95,5 +125,19 @@ public class TransactionService : ITransactionService
             Note = transaction.Note,
             CreatedAt = transaction.CreatedAt
         };
+    }
+
+    public async Task<bool> DeleteAsync(int id, int userId)
+    {
+        var transaction = await _context.Transactions
+            .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
+
+        if (transaction == null)
+            return false;
+
+        _context.Transactions.Remove(transaction);
+        await _context.SaveChangesAsync();
+
+        return true;
     }
 }

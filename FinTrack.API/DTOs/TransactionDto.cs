@@ -2,8 +2,13 @@ namespace FinTrack.API.DTOs;
 
 public class TransactionDto
 {
+
+    
     public int Id { get; set; }
 
+public int? CategoryId { get; set; }
+
+public string? CategoryName { get; set; }
     public string Title { get; set; } = string.Empty;
 
     public decimal Amount { get; set; }

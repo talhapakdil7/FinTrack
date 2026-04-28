@@ -1,44 +1,56 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using FinTrack.API.DTOs;
 using FinTrack.API.Interfaces;
+using System.Security.Claims;
 
 namespace FinTrack.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class TransactionsController : ControllerBase
 {
-    // Service'i inject ediyoruz
     private readonly ITransactionService _transactionService;
 
-    // Constructor
     public TransactionsController(ITransactionService transactionService)
     {
         _transactionService = transactionService;
     }
 
+    // JWT token içinden userId okur
+    private int GetUserId()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return int.Parse(userId!);
+    }
 
-    // GET /api/transactions
     [HttpGet]
-    public IActionResult GetAll()
+    public async Task<IActionResult> GetAll()
     {
-        var result = _transactionService.GetAll();
+        var userId = GetUserId();
+
+        var result = await _transactionService.GetAllAsync(userId);
+
         return Ok(result);
     }
 
-    // POST /api/transactions
     [HttpPost]
-    public IActionResult Create(CreateTransactionDto dto)
+    public async Task<IActionResult> Create(CreateTransactionDto dto)
     {
-        var result = _transactionService.Create(dto);
+        var userId = GetUserId();
+
+        var result = await _transactionService.CreateAsync(dto, userId);
+
         return Ok(result);
     }
 
-    // PUT /api/transactions/1
     [HttpPut("{id}")]
-    public IActionResult Update(int id, CreateTransactionDto dto)
+    public async Task<IActionResult> Update(int id, CreateTransactionDto dto)
     {
-        var result = _transactionService.Update(id, dto);
+        var userId = GetUserId();
+
+        var result = await _transactionService.UpdateAsync(id, dto, userId);
 
         if (result == null)
             return NotFound();
@@ -46,16 +58,16 @@ public class TransactionsController : ControllerBase
         return Ok(result);
     }
 
-    // DELETE /api/transactions/1
     [HttpDelete("{id}")]
-    public IActionResult Delete(int id)
+    public async Task<IActionResult> Delete(int id)
     {
-        var success = _transactionService.Delete(id);
+        var userId = GetUserId();
+
+        var success = await _transactionService.DeleteAsync(id, userId);
 
         if (!success)
             return NotFound();
 
         return Ok(new { message = "Deleted successfully" });
     }
-
 }
