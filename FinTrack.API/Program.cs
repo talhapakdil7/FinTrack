@@ -40,6 +40,10 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IBudgetService, BudgetService>();
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<IAiService, AiService>();
 
 // JWT AUTHENTICATION
 builder.Services.AddAuthentication(options =>
@@ -52,9 +56,9 @@ builder.Services.AddAuthentication(options =>
     options.TokenValidationParameters = new TokenValidationParameters
     {
        ValidateIssuer = false,
-ValidateAudience = false,
-ValidateLifetime = true,
-ValidateIssuerSigningKey = true,
+        ValidateAudience = false,
+        ValidateLifetime = true,
+       ValidateIssuerSigningKey = true,
 
         ValidIssuer = issuer,
         ValidAudience = audience,

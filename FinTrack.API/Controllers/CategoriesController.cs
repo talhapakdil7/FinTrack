@@ -71,4 +71,5 @@ public async Task<IActionResult> Delete(int id)
 
     return Ok(new { message = "Category deleted successfully" });
 }
+
 }
