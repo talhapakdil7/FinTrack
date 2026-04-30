@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: fintrack-postgres
+    environment:
+      POSTGRES_DB: fintrackdb
+      POSTGRES_USER: fintrackuser
+      POSTGRES_PASSWORD: fintrackpass
+    ports:
+      - "5433:5432"
+    volumes:
+      - fintrack_postgres_data:/var/lib/postgresql/data
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: fintrack-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.4
+    container_name: fintrack-kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+
+  api:
+    build:
+      context: ./FinTrack.API
+      dockerfile: Dockerfile
+    container_name: fintrack-api
+    ports:
+      - "8080:8080"
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=postgres;Database=fintrackdb;Username=fintrackuser;Password=fintrackpass"
+      Jwt__Key: "this_is_a_very_long_secret_key_for_fintrack_jwt_auth_2026"
+    depends_on:
+      - postgres
+      - elasticsearch
+
+volumes:
+  fintrack_postgres_data:
