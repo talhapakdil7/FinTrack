@@ -25,14 +25,14 @@ public class TransactionsController : ControllerBase
         return int.Parse(userId!);
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetAll()
+    [HttpGet] //attribute 
+    public async Task<IActionResult> GetAll() // action method
     {
         var userId = GetUserId();
 
         var result = await _transactionService.GetAllAsync(userId);
 
-        return Ok(result);
+        return Ok(result); //kullanıcıya http 200 ile birlikte result döners
     }
 
     [HttpPost]

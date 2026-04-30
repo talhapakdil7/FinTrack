@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using FinTrack.API.Interfaces;
+using FinTrack.API.DTOs;
 
 namespace FinTrack.API.Controllers;
 
@@ -25,15 +26,17 @@ public class ReportsController : ControllerBase
 
         var result = await _reportService.GetSummaryAsync(userId);
 
-        return Ok(result);
+        return Ok(ApiResponse<ReportDto>.Ok(result));
     }
+
     [HttpGet("category-summary")]
-public async Task<IActionResult> GetCategorySummary()
-{
-    var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+    public async Task<IActionResult> GetCategorySummary()
+    {
+        // JWT içinden userId alıyoruz
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
-    var result = await _reportService.GetCategorySummaryAsync(userId);
+        var result = await _reportService.GetCategorySummaryAsync(userId);
 
-    return Ok(result);
-}
+        return Ok(ApiResponse<IEnumerable<CategoryReportDto>>.Ok(result));
+    }
 }

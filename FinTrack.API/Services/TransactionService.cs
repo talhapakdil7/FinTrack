@@ -9,10 +9,14 @@ namespace FinTrack.API.Services;
 public class TransactionService : ITransactionService
 {
     private readonly AppDbContext _context;
+    private readonly ILogger<TransactionService> _logger;
 
-    public TransactionService(AppDbContext context)
+    public TransactionService(
+        AppDbContext context,
+        ILogger<TransactionService> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     public async Task<IEnumerable<TransactionDto>> GetAllAsync(int userId)
@@ -36,15 +40,21 @@ public class TransactionService : ITransactionService
 
     public async Task<TransactionDto> CreateAsync(CreateTransactionDto dto, int userId)
     {
-
         if (dto.CategoryId != null)
-{
-    var categoryExists = await _context.Categories
-        .AnyAsync(c => c.Id == dto.CategoryId && c.UserId == userId);
+        {
+            var categoryExists = await _context.Categories
+                .AnyAsync(c => c.Id == dto.CategoryId && c.UserId == userId);
 
-    if (!categoryExists)
-        throw new Exception("Geçersiz kategori");
-}
+            if (!categoryExists)
+            {
+                _logger.LogWarning(
+                    "Transaction create failed. Invalid category. CategoryId: {CategoryId}, UserId: {UserId}",
+                    dto.CategoryId,
+                    userId);
+
+                throw new Exception("Geçersiz kategori");
+            }
+        }
 
         var transaction = new Transaction
         {
@@ -60,6 +70,13 @@ public class TransactionService : ITransactionService
 
         await _context.Transactions.AddAsync(transaction);
         await _context.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Transaction created. TransactionId: {TransactionId}, UserId: {UserId}, Amount: {Amount}, Type: {Type}",
+            transaction.Id,
+            userId,
+            transaction.Amount,
+            transaction.Type);
 
         var categoryName = await _context.Categories
             .Where(c => c.Id == transaction.CategoryId && c.UserId == userId)
@@ -82,21 +99,35 @@ public class TransactionService : ITransactionService
 
     public async Task<TransactionDto?> UpdateAsync(int id, CreateTransactionDto dto, int userId)
     {
-
         if (dto.CategoryId != null)
-{
-    var categoryExists = await _context.Categories
-        .AnyAsync(c => c.Id == dto.CategoryId && c.UserId == userId);
+        {
+            var categoryExists = await _context.Categories
+                .AnyAsync(c => c.Id == dto.CategoryId && c.UserId == userId);
 
-    if (!categoryExists)
-        throw new Exception("Geçersiz kategori");
-}
+            if (!categoryExists)
+            {
+                _logger.LogWarning(
+                    "Transaction update failed. Invalid category. TransactionId: {TransactionId}, CategoryId: {CategoryId}, UserId: {UserId}",
+                    id,
+                    dto.CategoryId,
+                    userId);
+
+                throw new Exception("Geçersiz kategori");
+            }
+        }
 
         var transaction = await _context.Transactions
             .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
 
         if (transaction == null)
+        {
+            _logger.LogWarning(
+                "Transaction update failed. Transaction not found. TransactionId: {TransactionId}, UserId: {UserId}",
+                id,
+                userId);
+
             return null;
+        }
 
         transaction.Title = dto.Title;
         transaction.Amount = dto.Amount;
@@ -107,6 +138,13 @@ public class TransactionService : ITransactionService
         transaction.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Transaction updated. TransactionId: {TransactionId}, UserId: {UserId}, Amount: {Amount}, Type: {Type}",
+            transaction.Id,
+            userId,
+            transaction.Amount,
+            transaction.Type);
 
         var categoryName = await _context.Categories
             .Where(c => c.Id == transaction.CategoryId && c.UserId == userId)
@@ -133,10 +171,22 @@ public class TransactionService : ITransactionService
             .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
 
         if (transaction == null)
+        {
+            _logger.LogWarning(
+                "Transaction delete failed. Transaction not found. TransactionId: {TransactionId}, UserId: {UserId}",
+                id,
+                userId);
+
             return false;
+        }
 
         _context.Transactions.Remove(transaction);
         await _context.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Transaction deleted. TransactionId: {TransactionId}, UserId: {UserId}",
+            id,
+            userId);
 
         return true;
     }

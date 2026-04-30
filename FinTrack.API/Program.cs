@@ -8,9 +8,23 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-
+using FinTrack.API.Middlewares;
+using Serilog;
+using Elastic.Serilog.Sinks;
 
 var builder = WebApplication.CreateBuilder(args);
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.File(
+        "logs/fintrack-.txt",
+        rollingInterval: RollingInterval.Day)
+    .WriteTo.Elasticsearch(new[] { new Uri("http://elasticsearch:9200") })
+    .CreateLogger();
+
+builder.Host.UseSerilog();
 
 // appsettings.json içinden connection string okunur
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -55,10 +69,10 @@ builder.Services.AddAuthentication(options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
     {
-       ValidateIssuer = false,
+        ValidateIssuer = false,
         ValidateAudience = false,
         ValidateLifetime = true,
-       ValidateIssuerSigningKey = true,
+        ValidateIssuerSigningKey = true,
 
         ValidIssuer = issuer,
         ValidAudience = audience,
@@ -71,16 +85,14 @@ builder.Services.AddAuthentication(options =>
 
 var app = builder.Build();
 
-// DEVELOPMENT ortamında Swagger açılır
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSerilogRequestLogging();
+app.UseMiddleware<ExceptionMiddleware>();
+
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 
-// Sıralama önemli
 app.UseAuthentication();
 app.UseAuthorization();
 

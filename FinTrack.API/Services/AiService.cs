@@ -34,18 +34,22 @@ public class AiService : IAiService
             .Sum(t => t.Amount);
 
         var prompt = $"""
-        You are a financial assistant.
+    You are a financial assistant.
 
-        Analyze this data and give a short insight.
+    Analyze this user's last 20 transactions and give a short insight.
 
-        Income: {totalIncome}
-        Expense: {totalExpense}
-        Balance: {totalIncome - totalExpense}
+    Income: {totalIncome}
+    Expense: {totalExpense}
+    Balance: {totalIncome - totalExpense}
 
-        Keep it short and helpful.
-        """;
+    Keep it short and helpful.
+    """;
 
         var apiKey = _configuration["Gemini:ApiKey"];
+
+        if (string.IsNullOrWhiteSpace(apiKey))
+            throw new InvalidOperationException("Gemini API key is missing.");
+
         var model = _configuration["Gemini:Model"] ?? "gemini-3-flash-preview";
 
         var client = new Client(apiKey: apiKey);
@@ -55,11 +59,18 @@ public class AiService : IAiService
             contents: prompt
         );
 
-        var text = response.Candidates[0].Content.Parts[0].Text;
+        var text = response.Candidates?
+            .FirstOrDefault()?
+            .Content?
+            .Parts?
+            .FirstOrDefault()?
+            .Text;
 
         return new AiInsightDto
         {
-            Insight = text ?? "No insight generated"
+            Insight = string.IsNullOrWhiteSpace(text)
+                ? "No insight generated"
+                : text
         };
     }
 }
